@@ -1,81 +1,83 @@
-let cart;
-const getLocalStorage = () =>{
+let cart = [];
+let product;
+let productFetch;
+
+//récupération des données du local storage
+const getLocalStorage = async() =>{
     cart = localStorage.getItem("product");
-    if(cart == null){
-        alert('votre panier est vide');
-        document.location.href = "../html/index.html"
-    }else{
-        cart = JSON.parse(cart); 
-    };
+    cart = JSON.parse(cart);
 };
 
-
-  
-let productId;
-let productColor;
-let productQuantity;
-
-let product = [];
-const fetchProduct = async() =>{
-    await fetch(`http://localhost:3000/api/products/${productId}`)
+//récupération des données de l'API pour le nom, le prix, la description
+const fetchProduct = async(id) =>{
+    await fetch(`http://localhost:3000/api/products/${id}`)
     .then((res) => res.json())
-    .then((data) =>{ 
-        product = data
-    })
+    .then((data) => productFetch = data)
     .catch (err => console.log("erreur de récupération des données de l'API", err));
-};  
-let articleCartItem;
-let cartItem;
-const createCartItem = () =>{
+};
+// initialisation du porduit: avec toutes les données récupérées du local storage et de l'API, on créer un seul produit
+const initProduct = async () =>{
+    await getLocalStorage();  
+    for (let i = 0; i < cart.length; i++){
+        let productId = cart[i].id;
+        await fetchProduct(productId);
+        product = cart.find(p=> p.id == productFetch._id && p.color == cart[i].color);  
+        product['price'] = productFetch.price;
+        product['image'] = productFetch.imageUrl;
+        product['name'] = productFetch.name;
+        product['txt'] = productFetch.altTxt;
+    };
+}; 
+
+//création de l'article dans le dom
+const createCartItem = async (id, color) =>{
     cartItem = document.getElementById('cart__items');
     articleCartItem = document.createElement('article');
     cartItem.appendChild(articleCartItem);
     articleCartItem.classList.add("cart__item");
-    articleCartItem.setAttribute('data-id', `${productId}`);
-    articleCartItem.setAttribute('data-color', `${productColor}`);
-}
+    articleCartItem.setAttribute('data-id', id);
+    articleCartItem.setAttribute('data-color', color);
+};
 
-const getImageProduct = async () =>{
+//création de l'image affichée dans le panier
+const getImageProduct = async (image, txt) =>{
     const cartItemImage = document.createElement('div');
     articleCartItem.appendChild(cartItemImage);
     cartItemImage.classList.add("cart__item__img");
     const productImage = document.createElement('img');
     cartItemImage.appendChild(productImage);
-    productImage.setAttribute("src", product.imageUrl);
-    productImage.setAttribute("alt", product.altTxt);
-}
+    productImage.setAttribute("src", image);
+    productImage.setAttribute("alt", txt);
+};
 
-let cartItemContent;
 // cart__item__content
-const createCartItemContent = async () =>{    
+const createCartItemContent = async(name, color) =>{    
     cartItemContent = document.createElement('div');
     articleCartItem.appendChild(cartItemContent);
     cartItemContent.classList.add("cart__item__content");
-};
-
-const createContentDescription = ()=>{
+    
     //cart__item__content__description
-    const cartItemContentDescription = document.createElement('div');
+    cartItemContentDescription = document.createElement('div');
     cartItemContent.appendChild(cartItemContentDescription);
     cartItemContentDescription.classList.add("cart__item__content__description");
-
+    
     const titleProduct = document.createElement('h2');
     cartItemContentDescription.appendChild(titleProduct);
-    titleProduct.textContent = product.name;
+    titleProduct.textContent = name;
     
     const cartColor = document.createElement('p');
     cartItemContentDescription.appendChild(cartColor);
-    cartColor.textContent = productColor;
-    
-    const cartPrice = document.createElement('p');
-    cartItemContentDescription.appendChild(cartPrice);
-    cartPrice.textContent = product.price + ' €';
+    cartColor.textContent = color;
 };
-let cartItemContentSettings
-let settingQuantity;
-let inputQuantity;
+
+const createContentPrice = async (price) =>{    
+    cartPrice = document.createElement('p');
+    cartItemContentDescription.appendChild(cartPrice);
+    cartPrice.textContent = price + ' €';
+};
+
 //cart__item__content__settings
-const createContentsettings = () =>{
+const createContentsettings = async (quantity, id, color) =>{
     cartItemContentSettings = document.createElement('div');
     cartItemContent.appendChild(cartItemContentSettings);
     cartItemContentSettings.classList.add('cart__item__content__settings');
@@ -85,9 +87,9 @@ const createContentsettings = () =>{
     cartItemContentSettings.appendChild(settingQuantity);
     settingQuantity.classList.add('cart__item__content__settings__quantity')
     
-    const quantity = document.createElement('p');
-    settingQuantity.appendChild(quantity);
-    quantity.textContent = "Qté : ";
+    const money = document.createElement('p');
+    settingQuantity.appendChild(money);
+    money.textContent = "Qté : ";
     
     inputQuantity = document.createElement('input');
     settingQuantity.appendChild(inputQuantity);
@@ -96,10 +98,13 @@ const createContentsettings = () =>{
     inputQuantity.setAttribute('name', 'itemQuantity');
     inputQuantity.setAttribute('min', '1');
     inputQuantity.setAttribute('max', '100');
-    inputQuantity.setAttribute('value', productQuantity);
-}
-let deleteProduct; 
-const createDelete = () =>{
+    inputQuantity.setAttribute('value', quantity);
+    inputQuantity.setAttribute('data-id', id);
+    inputQuantity.setAttribute('data-color', color);
+};
+
+//création du bouton supprimer et modification du curser au survol du bouton
+const createDelete = (id, color) =>{
     const settingsDelete = document.createElement('div');
     cartItemContentSettings.appendChild(settingsDelete);
     settingsDelete.classList.add("cart__item__settings__delete");
@@ -107,75 +112,90 @@ const createDelete = () =>{
     deleteProduct = document.createElement('p');
     settingsDelete.appendChild(deleteProduct);
     deleteProduct.textContent = "Supprimer";
+    deleteProduct.setAttribute('data-id', id);
+    deleteProduct.setAttribute('data-color', color);
+    
     deleteProduct.addEventListener("mousemove", function (e) {
         let modifCurser = e.target;
         modifCurser.style.cursor = 'pointer';
     });
 };
 
+//sauvegarde du panier dans le localStorage
 const saveLocalStorage = (cart) =>{
     localStorage.setItem('product', JSON.stringify(cart));
 };
 
-
-
+//fonction pour l'ajout d'un même produit dans le panier
 const productQuantityModif = () =>{
-    inputQuantity.addEventListener('change', function (e){
-       
-        inputNewQuantity = e.target.value;
-        inputQuantity.setAttribute('value', inputNewQuantity);
-       
-        let inputQuantityModif = e.target.parentElement;
-        let inputModif = inputQuantityModif.closest('article');
-        
-        idInputModif = inputModif.dataset.id;
-        colorInputModif = inputModif.dataset.color;
+   
+    //écoute de l'évènement 'change de l'input
+    inputQuantity.addEventListener('change', function (e){ 
+        initProduct() //récupération des données du porduit au change
 
-        let foundProduct = cart.find(p => p.id == idInputModif && p.color == colorInputModif)
-        foundProduct.quantity = inputNewQuantity;
-        saveLocalStorage(cart);
-       
-        console.log(cart);
-       
+        //recherche du produit concerné
+        product = cart.find(p => p.id == e.target.dataset.id && p.color == e.target.dataset.color)
+        product.quantity = parseInt(e.target.value) // modification de la quantité
+
+        getTotal() // recalcul du total
+
+        saveLocalStorage(cart);  // sauvegarde du nouveau tableau dans le localStorage 
     });
 };
-
+// fonction pour supprimer un produit à partir du panier
 const cartDeleteProduct = () =>{
-    deleteProduct.addEventListener('click', function(e){
-        let productToDelete = e.target;
-        let articleDelete = productToDelete.closest("article");
+   deleteProduct.addEventListener('click', function(e){ //écoute de l'évènement click sur le bouton supprimer
+        initProduct() //récupération des données du produit au click
+       
+        //supression de l'article concerné dans le dom
+        let deleteModificate = e.target;
+        let articleDelete = deleteModificate.closest('article');
+        articleDelete.remove();
         
-        cart.pop(articleDelete);
-        cartItem.removeChild(articleDelete);
-        saveLocalStorage(cart);
-    })
-   
-}
+        // on garde dans le tableau cart les produits qui ne sont pas concernés
+        cart = cart.filter(p => p.id != e.target.dataset.id || p.color != e.target.dataset.color);
+        
+        getTotal() // recalcul du total du panier
+       
+        saveLocalStorage(cart);  // sauvegarde du nouveau tableau dans le localStorage
+        alert('votre article a été supprimé du panier')
+       
+    });  
+};
+//calcul du nombre de produits dans le panier et du prix total du panier
+const getTotal = () =>{
+    //ciblage des zones du dom concernées et déclaation des variables pour faire les calculs
+    totalQuantity = document.getElementById('totalQuantity');
+    let number = 0;
+    let spanTotalPrice = document.getElementById('totalPrice');
+    let totalPrice = 0;  
 
-let idInputModif;
-let colorInputModif;
-let inputNewQuantity;
-const initCart = async() =>{
-   getLocalStorage();
-    for(let i = 0; i < cart.length; i++){
-        productId = cart[i].id;
-        productColor = cart[i].color;
-        productQuantity = cart[i].quantity;
-   
-    await fetchProduct();
-    createCartItem();
-    getImageProduct();
-    createCartItemContent();
-    createContentDescription();
-    createContentsettings();
-    createDelete();
-    productQuantityModif();
-    cartDeleteProduct();
-    }
-    
+    for(let product of cart){ // calcul des totaux
+        let productQuantityNumber = parseInt(product.quantity);
+        totalQuantity.textContent = number += productQuantityNumber;                                                
+        spanTotalPrice.textContent = totalPrice += parseInt(product.price) * productQuantityNumber;
+    };
+    if(cart.length == 0){
+        totalQuantity.textContent = "0";
+        spanTotalPrice.textContent = "0";
+        alert('Votre panier est vide');
+    };
 };
 
-initCart();
-
-
- 
+// appel de toutes les fonctions pour créer la page cart
+const initCart = async () =>{
+    await initProduct()
+    for(let product of cart){ 
+        await createCartItem(product.id, product.color)
+        await getImageProduct(product.image, product.txt)
+        await createCartItemContent(product.name, product.color)
+        await createContentPrice(product.price)
+        await createContentsettings(product.quantity, product.id, product.color, product.price)
+        createDelete(product.id, product.color) 
+        productQuantityModif()
+        cartDeleteProduct()  
+    }; 
+    getTotal(); 
+};
+initCart()
+        
