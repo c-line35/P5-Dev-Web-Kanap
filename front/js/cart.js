@@ -15,19 +15,6 @@ const fetchProduct = async(id) =>{
     .then((data) => productFetch = data)
     .catch (err => console.log("erreur de récupération des données de l'API", err));
 };
-// initialisation du porduit: avec toutes les données récupérées du local storage et de l'API, on créer un seul produit
-const initProduct = async () =>{
-    await getLocalStorage();  
-    for (let i = 0; i < cart.length; i++){
-        let productId = cart[i].id;
-        await fetchProduct(productId);
-        product = cart.find(p=> p.id == productFetch._id && p.color == cart[i].color);  
-        product['price'] = productFetch.price;
-        product['image'] = productFetch.imageUrl;
-        product['name'] = productFetch.name;
-        product['txt'] = productFetch.altTxt;
-    };
-}; 
 
 //création de l'article dans le dom
 const createCartItem = async (id, color) =>{
@@ -128,74 +115,164 @@ const saveLocalStorage = (cart) =>{
 
 //fonction pour l'ajout d'un même produit dans le panier
 const productQuantityModif = () =>{
-   
     //écoute de l'évènement 'change de l'input
-    inputQuantity.addEventListener('change', function (e){ 
-        initProduct() //récupération des données du porduit au change
-
+    inputQuantity.addEventListener('change', function (e){
         //recherche du produit concerné
         product = cart.find(p => p.id == e.target.dataset.id && p.color == e.target.dataset.color)
         product.quantity = parseInt(e.target.value) // modification de la quantité
-
-        getTotal() // recalcul du total
-
+       
+        getTotal(parseInt(product.quantity), productFetch.price) // recalcul du total
         saveLocalStorage(cart);  // sauvegarde du nouveau tableau dans le localStorage 
     });
 };
 // fonction pour supprimer un produit à partir du panier
 const cartDeleteProduct = () =>{
-   deleteProduct.addEventListener('click', function(e){ //écoute de l'évènement click sur le bouton supprimer
-        initProduct() //récupération des données du produit au click
-       
+    deleteProduct.addEventListener('click', function(e){ //écoute de l'évènement click sur le bouton supprimer
         //supression de l'article concerné dans le dom
         let deleteModificate = e.target;
         let articleDelete = deleteModificate.closest('article');
         articleDelete.remove();
-        
         // on garde dans le tableau cart les produits qui ne sont pas concernés
         cart = cart.filter(p => p.id != e.target.dataset.id || p.color != e.target.dataset.color);
-        
-        getTotal() // recalcul du total du panier
-       
+        getTotal(product.quantity, productFetch.price) // recalcul du total du panier
         saveLocalStorage(cart);  // sauvegarde du nouveau tableau dans le localStorage
         alert('votre article a été supprimé du panier')
-       
+        
     });  
 };
 //calcul du nombre de produits dans le panier et du prix total du panier
-const getTotal = () =>{
-    //ciblage des zones du dom concernées et déclaation des variables pour faire les calculs
-    totalQuantity = document.getElementById('totalQuantity');
-    let number = 0;
-    let spanTotalPrice = document.getElementById('totalPrice');
-    let totalPrice = 0;  
-
-    for(let product of cart){ // calcul des totaux
-        let productQuantityNumber = parseInt(product.quantity);
-        totalQuantity.textContent = number += productQuantityNumber;                                                
-        spanTotalPrice.textContent = totalPrice += parseInt(product.price) * productQuantityNumber;
-    };
+let totalQuantity = document.getElementById('totalQuantity');
+let spanTotalPrice = document.getElementById('totalPrice');
+let number = 0;
+let totalPrice = 0;
+const getTotal = (quantity, price) =>{
+     
+        totalQuantity.textContent = number += quantity;                                              
+        spanTotalPrice.textContent = totalPrice += quantity * parseInt(price);
+    
     if(cart.length == 0){
         totalQuantity.textContent = "0";
         spanTotalPrice.textContent = "0";
-        alert('Votre panier est vide');
+    }; 
+};
+
+
+
+// initialisation du produit, création des articles dans le dom
+const initProduct = async () =>{
+    await getLocalStorage();  
+   
+    for (let product of cart){
+        let productId = product.id;
+        await fetchProduct(productId);
+        product = cart.find(p=> p.id == productFetch._id && p.color == product.color);  
+        await createCartItem(product.id, product.color)
+        await getImageProduct(productFetch.imageUrl, productFetch.txt)
+        await createCartItemContent(productFetch.name, product.color)
+        await createContentPrice(productFetch.price)
+        await createContentsettings(product.quantity, product.id, product.color, productFetch.price);   
+        createDelete(product.id, product.color) 
+        productQuantityModif()
+        cartDeleteProduct()
+        getTotal(product.quantity, productFetch.price);
+    };
+   
+}; 
+initProduct();
+
+let firstname, lastName, address, city, email
+const formInputs = document.querySelectorAll('#firstName, #lastName, #address ,#city, #email')
+
+const nameChecker = (tag, value) =>{
+    const errorContainer = document.getElementById(tag  + 'ErrorMsg')
+    if(!value.match(/^[a-z\séèçêë'-]{2,20}$/i)){
+        errorContainer.textContent = 'Ce champ doit contenir entre 2 et 20 lettres et aucun caractères spéciaux'
+        }else{
+            errorContainer.textContent = ''
+            tag = value
+    };
+};
+const addressChecker = (tag, value) =>{
+    const errorContainer = document.getElementById(tag  + 'ErrorMsg')
+    if(!value.match(/^[\w\séèçêë'-,]+$/i)){
+        errorContainer.textContent = 'Ce champ ne doit contenir aucun caractères spéciaux'
+        }else{
+            errorContainer.textContent = ''
+            tag = value
+    };
+};
+const emailChecker = (tag, value) =>{
+    const errorContainer = document.getElementById(tag  + 'ErrorMsg')
+    if(!value.match(/^[\w_-]+@[a-z]+\.[a-z]{2,4}$/i)){
+        errorContainer.textContent = 'adresse email invalide'
+        }else{
+            errorContainer.textContent = ''
+            tag = value
     };
 };
 
-// appel de toutes les fonctions pour créer la page cart
-const initCart = async () =>{
-    await initProduct()
-    for(let product of cart){ 
-        await createCartItem(product.id, product.color)
-        await getImageProduct(product.image, product.txt)
-        await createCartItemContent(product.name, product.color)
-        await createContentPrice(product.price)
-        await createContentsettings(product.quantity, product.id, product.color, product.price)
-        createDelete(product.id, product.color) 
-        productQuantityModif()
-        cartDeleteProduct()  
-    }; 
-    getTotal(); 
+
+
+formInputs.forEach((input)=>{
+    input.addEventListener("input", (e) =>{
+        console.log(e.target.id)
+nameChecker('firstName', e.target.value)
+nameChecker('lastName', e.target.value)
+nameChecker('city', e.target.value)
+addressChecker('address', e.target.value)
+emailChecker('email', e.target.value)
+    })
+})
+
+let submitCommand = document.getElementById('order');
+submitCommand.addEventListener('click', function(e){
+    e.preventDefault();})
+
+
+/* const getUser = () =>{
+    let inputFirstName = document.getElementById('firstName');
+    let inputLastName = document.getElementById('lastName');
+    let inputAddress = document.getElementById('address');
+    let inputCity = document.getElementById('city');
+    let inputEmail = document.getElementById('email');
+    let user = {
+        firstName : inputFirstName.value,
+        lastName : inputLastName.value,
+        adress : inputAddress.value,
+        city : inputCity.value,
+        email : inputEmail.value
+    };
+    return user
 };
-initCart()
-        
+
+let submitCommand = document.getElementById('order');
+submitCommand.addEventListener('click', function(e){
+    e.preventDefault();
+    let contact = getUser()
+    let products = getIdCommand();
+    console.log(JSON.stringify(contact))
+    console.log(JSON.stringify(products))
+    fetchOrder({contact, products})
+});
+const getIdCommand = () =>{
+
+for(let product of cart){
+    delete product.color;
+    delete product.quantity;
+    }
+    return cart
+}
+const fetchOrder = (iduser, id) =>{
+    fetch ("http://localhost:3000/api/products/order",{
+	method: "POST",
+	headers: { 
+'Accept': 'application/json', 
+'Content-Type': 'application/json' 
+        },
+	body: JSON.stringify({iduser, id})
+    }
+    /* .then((res) => res.json())
+    .then ((data) => commandId = data)
+    .catch (err => console.log("erreur de récupération des données", err)) 
+    );
+} */
