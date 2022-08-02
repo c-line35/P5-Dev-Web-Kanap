@@ -1,3 +1,15 @@
+CONSTRUISEZ UN SITE E-COMMERCE EN JAVASCRIPT
+
+Mission: Pour une entreprise de e-commerce qui vend des canapés, unifier les travaux déjà réalisés par l'équipe (API et frontend statique) en intégrant dynamiquement les différentes pages avec Javascript, réalisation d'un plan de test d'acceptation.
+
+Compétences évaluées:
+  * Interagir avec un web service avec javascript
+  * Valider des données issues de sources externes
+  * Créer un plan de test pour une application
+  * Gérer des évènements javascript
+
+
+
 # Kanap #
 
 This is the front end and back end server for Project 5 of the Web Developer path.
